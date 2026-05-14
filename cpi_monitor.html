@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPI Monitor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --bg2: #141417;
+    --bg3: #1c1c21;
+    --bg4: #242429;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text1: #f0f0f2;
+    --text2: #8a8a9a;
+    --text3: #555565;
+    --green: #00c896;
+    --green-dim: rgba(0,200,150,0.12);
+    --green-mid: rgba(0,200,150,0.25);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.12);
+    --red-mid: rgba(255,77,106,0.25);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --blue: #4d9fff;
+    --mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text1); font-family: var(--mono); min-height: 100vh; padding: 24px; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .title { font-size: 13px; font-weight: 500; letter-spacing: .1em; color: var(--text1); text-transform: uppercase; }
+  .status { font-size: 11px; color: var(--text2); letter-spacing: .05em; }
+  .status.live { color: var(--green); }
+  .status.err { color: var(--red); }
+
+  .prices { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 16px; }
+  .price-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .price-label { font-size: 10px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .price-val { font-size: 20px; font-weight: 500; color: var(--text1); letter-spacing: -.01em; }
+  .price-val.pos { color: var(--green); }
+  .price-val.neg { color: var(--red); }
+  .price-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  .tf-row { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-bottom: 16px; }
+  .tf-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 12px; text-align: center; transition: border-color .3s; }
+  .tf-card.bull { border-color: rgba(0,200,150,.3); background: linear-gradient(160deg, var(--bg2), rgba(0,200,150,.05)); }
+  .tf-card.bear { border-color: rgba(255,77,106,.3); background: linear-gradient(160deg, var(--bg2), rgba(255,77,106,.05)); }
+  .tf-label { font-size: 10px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+  .tf-val { font-size: 16px; font-weight: 500; color: var(--text2); transition: color .3s; }
+  .tf-val.bull { color: var(--green); }
+  .tf-val.bear { color: var(--red); }
+  .tf-val.neu { color: var(--text2); }
+  .tf-sub { font-size: 9px; color: var(--text3); margin-top: 4px; letter-spacing: .05em; }
+
+  .align-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .align-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .align-title { font-size: 10px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
+  .align-dots { display: flex; gap: 8px; }
+  .adot { width: 36px; height: 36px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; border: 1px solid var(--border); color: var(--text3); background: var(--bg3); transition: all .3s; letter-spacing: .03em; }
+  .adot.bull { background: var(--green-dim); border-color: rgba(0,200,150,.4); color: var(--green); }
+  .adot.bear { background: var(--red-dim); border-color: rgba(255,77,106,.4); color: var(--red); }
+  .adot-arrow { font-size: 8px; line-height: 1; margin-top: 1px; }
+
+  .signal-box { border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 500; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; }
+  .signal-box.bull { background: var(--green-dim); border: 0.5px solid rgba(0,200,150,.3); color: var(--green); }
+  .signal-box.bear { background: var(--red-dim); border: 0.5px solid rgba(255,77,106,.3); color: var(--red); }
+  .signal-box.watch-bull { background: var(--amber-dim); border: 0.5px solid rgba(245,166,35,.3); color: var(--amber); }
+  .signal-box.watch-bear { background: var(--amber-dim); border: 0.5px solid rgba(245,166,35,.3); color: var(--amber); }
+  .signal-box.neutral { background: var(--bg3); border: 0.5px solid var(--border); color: var(--text2); }
+
+  .chart-section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .chart-title { font-size: 10px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
+  .legend { display: flex; gap: 14px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text3); }
+  .leg-sq { width: 8px; height: 3px; border-radius: 1px; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+  .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+  .countdown { font-size: 11px; color: var(--text3); }
+  .countdown b { color: var(--text2); }
+  .progress-bar { height: 2px; background: var(--bg4); border-radius: 1px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 1px; transition: width 1s linear; }
+
+  button {
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    color: var(--text2);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    letter-spacing: .05em;
+    display: flex; align-items: center; gap: 5px;
+  }
+  button:hover { background: var(--bg4); color: var(--text1); border-color: var(--border2); }
+
+  .error-box { background: var(--red-dim); border: 0.5px solid rgba(255,77,106,.3); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--red); margin-bottom: 12px; display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="live-dot" id="live-dot" style="background:var(--text3)"></div>
+    <div class="title">Coinbase Premium Index</div>
+  </div>
+  <div class="status" id="status-txt">Initializing...</div>
+</div>
+
+<div class="error-box" id="error-box"></div>
+
+<div class="prices">
+  <div class="price-card">
+    <div class="price-label">Coinbase BTC</div>
+    <div class="price-val" id="p-cb">—</div>
+    <div class="price-sub">BTC-USD</div>
+  </div>
+  <div class="price-card">
+    <div class="price-label">Binance BTC</div>
+    <div class="price-val" id="p-bn">—</div>
+    <div class="price-sub">BTCUSDT</div>
+  </div>
+  <div class="price-card">
+    <div class="price-label">Spread (CPI raw)</div>
+    <div class="price-val" id="p-spread">—</div>
+    <div class="price-sub" id="p-spread-pct">—</div>
+  </div>
+</div>
+
+<div class="tf-row">
+  <div class="tf-card neu" id="card-1m"><div class="tf-label">1 min</div><div class="tf-val neu" id="tf-1m">—</div><div class="tf-sub">latest</div></div>
+  <div class="tf-card neu" id="card-5m"><div class="tf-label">5 min</div><div class="tf-val neu" id="tf-5m">—</div><div class="tf-sub">5-bar avg</div></div>
+  <div class="tf-card neu" id="card-15m"><div class="tf-label">15 min</div><div class="tf-val neu" id="tf-15m">—</div><div class="tf-sub">15-bar avg</div></div>
+  <div class="tf-card neu" id="card-30m"><div class="tf-label">30 min</div><div class="tf-val neu" id="tf-30m">—</div><div class="tf-sub">30-bar avg</div></div>
+  <div class="tf-card neu" id="card-1h"><div class="tf-label">1 hour</div><div class="tf-val neu" id="tf-1h">—</div><div class="tf-sub">60-bar avg</div></div>
+</div>
+
+<div class="align-section">
+  <div class="align-top">
+    <div class="align-title">Timeframe alignment</div>
+    <div class="align-dots" id="align-dots">
+      <div class="adot">1m<div class="adot-arrow">—</div></div>
+      <div class="adot">5m<div class="adot-arrow">—</div></div>
+      <div class="adot">15m<div class="adot-arrow">—</div></div>
+      <div class="adot">30m<div class="adot-arrow">—</div></div>
+      <div class="adot">1h<div class="adot-arrow">—</div></div>
+    </div>
+  </div>
+  <div class="signal-box neutral" id="signal-box">
+    <i class="ti ti-loader" style="font-size:14px"></i>
+    Waiting for data...
+  </div>
+</div>
+
+<div class="chart-section">
+  <div class="chart-header">
+    <div class="chart-title">CPI history · last 60 bars</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#00c896"></div>positive</div>
+      <div class="leg"><div class="leg-sq" style="background:#ff4d6a"></div>negative</div>
+      <div class="leg"><div class="leg-sq" style="background:#4d9fff;height:1px;width:16px"></div>BTC price</div>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="cpi-chart" role="img" aria-label="Synthetic CPI bars with BTC price overlay over last 60 minutes">Synthetic CPI and BTC price history.</canvas>
+  </div>
+</div>
+
+<div class="footer">
+  <div>
+    <div class="countdown">Next refresh in <b id="cd-sec">60</b>s</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:100%"></div></div>
+  </div>
+  <button onclick="fetchData()"><i class="ti ti-refresh" style="font-size:13px"></i> Refresh</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let cpiHistory = [], btcHistory = [];
+let chart = null, cdTimer = 60, cdInterval = null;
+
+const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+const fmtCPI = v => (v >= 0 ? '+' : '') + v.toFixed(4) + '%';
+const fmtPrice = v => '$' + Math.round(v).toLocaleString();
+const classify = v => v > 0.001 ? 'bull' : v < -0.001 ? 'bear' : 'neu';
+
+function setTF(id, val) {
+  const el = document.getElementById('tf-' + id);
+  const card = document.getElementById('card-' + id);
+  const cls = classify(val);
+  el.textContent = fmtCPI(val);
+  el.className = 'tf-val ' + cls;
+  card.className = 'tf-card ' + cls;
+}
+
+function updateAlignment(tfs) {
+  const labels = ['1m','5m','15m','30m','1h'];
+  const arrows = { bull: '▲', bear: '▼', neu: '—' };
+  document.getElementById('align-dots').innerHTML = tfs.map((v,i) => {
+    const c = classify(v);
+    return `<div class="adot ${c}">${labels[i]}<div class="adot-arrow">${arrows[c]}</div></div>`;
+  }).join('');
+
+  const bulls = tfs.filter(v => v > 0.001).length;
+  const bears = tfs.filter(v => v < -0.001).length;
+  const box = document.getElementById('signal-box');
+  const icons = { bull: 'ti-trending-up', bear: 'ti-trending-down', watch: 'ti-alert-triangle', neu: 'ti-minus' };
+
+  let cls, icon, msg;
+  if (bulls === 5) {
+    cls='bull'; icon=icons.bull; msg='Full bullish alignment — US buyers dominating all timeframes';
+  } else if (bears === 5) {
+    cls='bear'; icon=icons.bear; msg='Full bearish alignment — US selling pressure across all timeframes';
+  } else if (tfs[0] > 0.001 && tfs[1] > 0.001 && tfs[4] < -0.001) {
+    cls='watch-bull'; icon=icons.watch; msg='Early flip attempt — 1m+5m turning bullish vs bearish 1h regime';
+  } else if (tfs[0] < -0.001 && tfs[1] < -0.001 && tfs[4] > 0.001) {
+    cls='watch-bear'; icon=icons.watch; msg='First crack — 1m+5m turning bearish vs bullish 1h regime';
+  } else if (bulls >= 3 && tfs[0] > 0.001 && tfs[1] > 0.001) {
+    cls='watch-bull'; icon=icons.watch; msg='Bullish momentum building — short TFs positive, watch for regime flip';
+  } else if (bears >= 3 && tfs[0] < -0.001 && tfs[1] < -0.001) {
+    cls='watch-bear'; icon=icons.watch; msg='Bearish momentum building — short TFs negative, watch for regime flip';
+  } else {
+    cls='neutral'; icon=icons.neu; msg='Mixed signals — no clear directional bias';
+  }
+  box.className = 'signal-box ' + cls;
+  box.innerHTML = `<i class="ti ${icon}" style="font-size:14px"></i>${msg}`;
+}
+
+function renderChart() {
+  const n = cpiHistory.length;
+  const labels = cpiHistory.map((_,i) => {
+    const m = n - 1 - i;
+    return m === 0 ? 'now' : '-' + m + 'm';
+  });
+  const cpiVals = cpiHistory.map(v => parseFloat(v.toFixed(5)));
+  const btcMin = Math.min(...btcHistory), btcMax = Math.max(...btcHistory);
+  const btcNorm = btcHistory.map(v => btcMin === btcMax ? 0 : (v - btcMin)/(btcMax - btcMin) * 0.08 - 0.04);
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('cpi-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'line',
+          data: btcNorm,
+          borderColor: '#4d9fff',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.4,
+          yAxisID: 'y',
+          fill: false,
+          borderDash: [3,3],
+          order: 1
+        },
+        {
+          data: cpiVals,
+          backgroundColor: cpiVals.map(v => v >= 0 ? 'rgba(0,200,150,0.5)' : 'rgba(255,77,106,0.5)'),
+          borderColor: cpiVals.map(v => v >= 0 ? '#00c896' : '#ff4d6a'),
+          borderWidth: 0.5,
+          borderRadius: 2,
+          yAxisID: 'y',
+          order: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c1c21',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 0.5,
+          titleColor: '#8a8a9a',
+          bodyColor: '#f0f0f2',
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => {
+              if (ctx.datasetIndex === 1) return ' CPI: ' + fmtCPI(ctx.parsed.y);
+              return ' BTC: ' + fmtPrice(btcHistory[ctx.dataIndex] || 0);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10, font: { size: 9, family: 'monospace' }, color: '#555565' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.07)' }
+        },
+        y: {
+          ticks: { font: { size: 9, family: 'monospace' }, color: '#555565', callback: v => v.toFixed(3) + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.07)' }
+        }
+      }
+    }
+  });
+}
+
+async function fetchData() {
+  const statusEl = document.getElementById('status-txt');
+  const dotEl = document.getElementById('live-dot');
+  const errBox = document.getElementById('error-box');
+  errBox.style.display = 'none';
+  statusEl.className = 'status';
+  statusEl.textContent = 'Fetching...';
+  dotEl.style.background = 'var(--text3)';
+
+  try {
+    const [bnRes, cbRes] = await Promise.all([
+      fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=65'),
+      fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60&limit=65')
+    ]);
+    if (!bnRes.ok) throw new Error('Binance ' + bnRes.status);
+    if (!cbRes.ok) throw new Error('Coinbase ' + cbRes.status);
+
+    const bnData = await bnRes.json();
+    const cbData = await cbRes.json();
+    if (!Array.isArray(bnData) || !Array.isArray(cbData)) throw new Error('Unexpected response format');
+
+    const bnCandles = bnData.map(d => ({ t: d[0], c: parseFloat(d[4]) })).sort((a,b) => a.t - b.t);
+    const cbCandles = cbData.map(d => ({ t: d[0]*1000, c: parseFloat(d[4]) })).sort((a,b) => a.t - b.t);
+    const cbMap = new Map(cbCandles.map(d => [Math.floor(d.t/60000), d.c]));
+
+    const matched = bnCandles.map(d => {
+      const key = Math.floor(d.t/60000);
+      const cbPrice = cbMap.get(key) || cbMap.get(key-1) || cbMap.get(key+1);
+      if (!cbPrice) return null;
+      return { bn: d.c, cb: cbPrice, cpi: (cbPrice - d.c) / d.c * 100 };
+    }).filter(Boolean);
+
+    if (matched.length < 10) throw new Error('Insufficient matched candles: ' + matched.length);
+
+    const recent = matched.slice(-60);
+    cpiHistory = recent.map(d => d.cpi);
+    btcHistory = recent.map(d => d.bn);
+
+    const latest = matched[matched.length - 1];
+    document.getElementById('p-cb').textContent = fmtPrice(latest.cb);
+    document.getElementById('p-bn').textContent = fmtPrice(latest.bn);
+
+    const spread = latest.cb - latest.bn;
+    const spreadEl = document.getElementById('p-spread');
+    spreadEl.textContent = (spread >= 0 ? '+' : '') + '$' + Math.abs(spread).toFixed(2);
+    spreadEl.className = 'price-val ' + (spread >= 0 ? 'pos' : 'neg');
+    document.getElementById('p-spread-pct').textContent = fmtCPI(latest.cpi);
+
+    const cpi1m  = cpiHistory[cpiHistory.length - 1];
+    const cpi5m  = avg(cpiHistory.slice(-5));
+    const cpi15m = avg(cpiHistory.slice(-15));
+    const cpi30m = avg(cpiHistory.slice(-30));
+    const cpi1h  = avg(cpiHistory.slice(-60));
+
+    setTF('1m',  cpi1m);
+    setTF('5m',  cpi5m);
+    setTF('15m', cpi15m);
+    setTF('30m', cpi30m);
+    setTF('1h',  cpi1h);
+
+    updateAlignment([cpi1m, cpi5m, cpi15m, cpi30m, cpi1h]);
+    renderChart();
+
+    dotEl.style.background = 'var(--green)';
+    statusEl.className = 'status live';
+    statusEl.textContent = 'Live · ' + new Date().toLocaleTimeString();
+    cdTimer = 60;
+
+  } catch(e) {
+    dotEl.style.background = 'var(--red)';
+    statusEl.className = 'status err';
+    statusEl.textContent = 'Error';
+    errBox.style.display = 'block';
+    errBox.textContent = e.message;
+  }
+}
+
+function startCountdown() {
+  if (cdInterval) clearInterval(cdInterval);
+  cdInterval = setInterval(() => {
+    cdTimer--;
+    const secEl = document.getElementById('cd-sec');
+    const fillEl = document.getElementById('progress-fill');
+    if (secEl) secEl.textContent = cdTimer;
+    if (fillEl) fillEl.style.width = (cdTimer / 60 * 100) + '%';
+    if (cdTimer <= 0) { cdTimer = 60; fetchData(); }
+  }, 1000);
+}
+
+fetchData();
+startCountdown();
+</script>
+</body>
+</html>
